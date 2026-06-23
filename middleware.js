@@ -1,3 +1,4 @@
+require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 function authMiddleware(req, res, next){
@@ -9,7 +10,7 @@ function authMiddleware(req, res, next){
         });
     }
 
-    const decoded = jwt.verify(token, "token");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.userId;
 
     if(!userId){

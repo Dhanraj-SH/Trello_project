@@ -1,4 +1,7 @@
+require("dotenv").config();
 const mongoose = require("mongoose");
+
+mongoose.connect(process.env.MONGO_URL);
 
 const userSchema = mongoose.Schema({
     username:{
@@ -16,7 +19,7 @@ const orgSchema = mongoose.Schema({
 });
 
 const userModel = mongoose.model("users", userSchema);
-const orgModel = mongoose.model("organization", orgSchema);
+const orgModel = mongoose.model("organizations", orgSchema);
 
 module.exports = {
     userModel,

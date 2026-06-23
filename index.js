@@ -1,26 +1,25 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const {authMiddleware} = require("./middleware");
+const {userModel, orgModel} = require("./models");
 
 const app = express();
 
 app.use(express.json());
 
-let USERS_ID = 1;
-let ORGANIZATION_ID = 1;
 let BOARD_ID = 1;
 let ISSUE_ID = 1; 
 
-const USERS = [];
-const ORGANIZATION = [];
 const BOARDS = [];
 const ISSUES = [];
 
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
 
-    const userExists = USERS.find( user => user.username === username);
+    const userExists = await userModel.findOne({
+        username: username
+    });
 
     if(userExists){
         return res.status(403).json({
@@ -28,23 +27,25 @@ app.post("/signup", (req, res) => {
         });
     }
 
-    USERS.push({
+    const newUser = await userModel.create({
         username: username,
-        password: password,
-        id : USERS_ID++
+        password: password
     });
 
     res.json({
-        message: "You have signed up"
+        id: newUser._id
     });
 
 });
 
-app.post("/signin", (req, res)=>{
+app.post("/signin", async (req, res)=>{
     const username = req.body.username;
     const password = req.body.password;
 
-    const userExists = USERS.find(user => user.username === username && user.password === password);
+    const userExists = await userModel.findOne({
+        username: username,
+        password: password
+    })
 
     if(!userExists){
         return res.status(403).json({
@@ -53,7 +54,7 @@ app.post("/signin", (req, res)=>{
     }
 
     const token = jwt.sign({
-        userId: userExists.id
+        userId: userExists._id
     },"token");
 
     res.json({
@@ -62,36 +63,40 @@ app.post("/signin", (req, res)=>{
 
 });
 
-app.post("/organization", authMiddleware, (req, res)=>{
+app.post("/organization", authMiddleware, async (req, res)=>{
     const userId = req.userId;
-    ORGANIZATION.push({
-        id: ORGANIZATION_ID++,
+
+    const newOrg = await orgModel.create({
         title: req.body.title,
-        description: req.body.des,
+        description: req.body.description,
         admin: userId,
         members: []
-    })
+    });    
 
     res.json({
         message: "Org created",
-        id: ORGANIZATION_ID - 1 
+        id: newOrg._id
     });
 });
 
-app.post("/add_member_to_organization", authMiddleware, (req, res)=>{
+app.post("/add_member_to_organization", authMiddleware, async (req, res)=>{
     const userId = req.userId;
     const organizationId = req.body.organizationId;
     const memberUsername = req.body.memberUsername;
 
-    const organization = ORGANIZATION.find(org => org.id === organizationId);
+    const orgExists = await orgModel.findOne({
+        _id: organizationId
+    });
 
-    if(!organization || organization.admin != userId){
+    if(!orgExists || orgExists.admin !== userId){
         return res.status(403).json({
             message: "Either the org does'nt exist or you are not an admin of this org"
         });
     }
 
-    const user = USERS.find(users => users.username === memberUsername);
+    const user = userModel.findOne({
+        username: memberUsername
+    });
 
     if(!user){
         return res.status(403).json({

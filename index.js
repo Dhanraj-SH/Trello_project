@@ -2,17 +2,12 @@ require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const {authMiddleware} = require("./middleware");
-const {userModel, orgModel} = require("./models");
+const {userModel, orgModel, boardModel, issueModel} = require("./models");
 
 const app = express();
 
 app.use(express.json());
 
-let BOARD_ID = 1;
-let ISSUE_ID = 1; 
-
-const BOARDS = [];
-const ISSUES = [];
 
 app.post("/signup", async (req, res) => {
     const username = req.body.username;
@@ -129,15 +124,66 @@ app.post("/add_member_to_organization", authMiddleware, async (req, res)=>{
 
 });
 
-app.post("/board", (req, res)=>{
-    
+app.post("/board", authMiddleware, async (req, res)=>{
+    const userId = req.userId;
+    const title = req.body.title;
+    const organizationId = req.body.organizationId;
+
+    const organization = await orgModel.findOne({
+        _id: organizationId
+    });
+
+    if(!organization || organization.admin.toString() !== userId){
+        return res.status(403).json({
+            message: "Either this organization doesnt exists or you are not the admin of the organization"
+        });
+    }
+
+    const newBoard = await boardModel.create({
+        title: title,
+        orgId: organizationId
+    });
+
+    res.json({
+        message: "New board created"
+    });
 });
 
 app.post("/issue", (req, res)=>{
 
 });
 
-app.get("/boards", (req, res)=>{
+app.get("/boards", authMiddleware, async (req, res)=>{
+    const userId = req.userId;
+    const organizationId = req.query.organizationId;
+
+    const organization = await orgModel.findOne({
+        _id: organizationId
+    });
+
+    if(!organization){
+        return res.status(403).json({
+            message: "The organization doesnt exists"
+        });
+    }
+
+    const checkOrgMember = organization.members.find(
+        m => m.toString() === userId
+    );
+
+    if(!checkOrgMember || organization.admin.toString() !== userId){
+        return res.status(403).json({
+            message: "You are not the member of this organization"
+        });
+    }
+
+    const boards = await boardModel.find({
+        orgId: organizationId
+    });
+
+    res.json({
+        boards: boards
+    });
 
 });
 

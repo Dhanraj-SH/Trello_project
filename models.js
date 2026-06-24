@@ -36,5 +36,7 @@ const issueModel = mongoose.model("issues", issuesSchema);
 
 module.exports = {
     userModel,
-    orgModel
+    orgModel,
+    boardModel,
+    issueModel
 }

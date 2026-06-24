@@ -167,13 +167,13 @@ app.get("/boards", authMiddleware, async (req, res)=>{
         });
     }
 
-    const checkOrgMember = organization.members.find(
-        m => m.toString() === userId
+    const isMember = organization.members.some(
+        m => m.toString() === userId.toString()
     );
 
-    if(!checkOrgMember || organization.admin.toString() !== userId){
+    if (!isMember && organization.admin.toString() !== userId.toString()){
         return res.status(403).json({
-            message: "You are not the member of this organization"
+            message: "You are not a member of this organization"
         });
     }
 
@@ -191,7 +191,37 @@ app.get("/issues", (req, res)=>{
 
 });
 
-app.get("/members", (req, res)=>{
+app.get("/members", authMiddleware, async (req, res)=>{
+    const userId = req.userId;
+    const organizationId = req.query.orgId;
+
+    const organization = await orgModel.findOne({
+        _id: organizationId
+    });
+
+    if (!organization) {
+        return res.status(403).json({
+            message: "Organization doesn't exist"
+        });
+    }
+
+    const isMember = organization.members.some(
+        m => m.toString() === userId.toString()
+    );
+
+    const isAdmin =
+        organization.admin.toString() === userId.toString();
+
+    if (!isAdmin && !isMember) {
+        return res.status(403).json({
+            message: "You're not part of this organization"
+        });
+    }
+
+    res.json({
+        admin: organization.admin,
+        members: organization.members
+    })
 
 });
 

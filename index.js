@@ -151,7 +151,7 @@ app.get("/members", (req, res)=>{
 
 app.get("/organization", authMiddleware, async (req, res)=>{
     const userId = req.userId;
-    const organizationId = req.body.organizationId;
+    const organizationId = req.query.organizationId;
 
     const organization = await orgModel.findOne({
         _id: organizationId

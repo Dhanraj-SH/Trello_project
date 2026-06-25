@@ -149,7 +149,41 @@ app.post("/board", authMiddleware, async (req, res)=>{
     });
 });
 
-app.post("/issue", (req, res)=>{
+app.post("/issue", authMiddleware, async (req, res)=>{
+    const userId = req.userId;
+    const title = req.body.title;
+    const boardId = req.body.boardId;
+
+    const board = await boardModel.findOne({
+        _id: boardId
+    });
+
+    const orgId = board.orgId;
+
+    const org = await orgModel.findOne({
+        _id: orgId
+    });
+
+    if(!org || org.admin.toString() !== userId){
+        return res.status(403).json({
+            message: "Either this organization doesnt exist or ur not admin"
+        });
+    }
+
+    if(!board){
+        return res.status(403).json({
+            message: "This board doesnt exist"
+        });
+    }
+
+    const newIssue = await issueModel.create({
+        title: title,
+        boardId: boardId
+    });
+
+    res.json({
+        id: newIssue._id
+    })
 
 });
 

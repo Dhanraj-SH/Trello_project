@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const {authMiddleware} = require("./middleware");
 const {userModel, orgModel, boardModel, issueModel} = require("./models");
@@ -25,7 +26,7 @@ app.post("/signup", async (req, res) => {
 
     const newUser = await userModel.create({
         username: username,
-        password: password
+        password: await bcrypt.hash(password, 10)
     });
 
     res.json({
@@ -39,13 +40,20 @@ app.post("/signin", async (req, res)=>{
     const password = req.body.password;
 
     const userExists = await userModel.findOne({
-        username: username,
-        password: password
-    })
+        username: username
+    });
+
+    const correctPassword = await bcrypt.compare(password, userExists.password);
 
     if(!userExists){
         return res.status(403).json({
-            message: "User have signed up"
+            message: "Incorrect credentials"
+        });
+    }
+
+    if(!correctPassword){
+        return res.status(403).json({
+            message: "Incorrect password"
         });
     }
 
@@ -221,8 +229,36 @@ app.get("/boards", authMiddleware, async (req, res)=>{
 
 });
 
-app.get("/issues", (req, res)=>{
+app.get("/issues", authMiddleware, async (req, res)=>{
+    const userId = req.userId;
+    const boardId = req.query.boardId;
 
+    const board = await boardModel.findOne({
+        _id: boardId
+    });
+
+    const organization = await orgModel.findOne({
+        _id: board.orgId
+    });
+
+    const isAdmin = organization.admin.toString() !== userId;
+    const isMember = organization.members.some(m => m.toString() === userId);
+    if(!organization || isMember || isAdmin){
+        return res.status(403).json({
+            message: "Either the orgainzation doesnt exist or your not a member of the organization "
+        });
+    }
+    if(!board){
+        return res.status(403).json({
+            message: "The board doesnt exists"
+        });
+    }
+    const issues = await issueModel.find({
+        boardId: boardId
+    })
+    res.json({
+        issues: issues
+    });
 });
 
 app.get("/members", authMiddleware, async (req, res)=>{
